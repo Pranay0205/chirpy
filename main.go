@@ -7,25 +7,33 @@ import (
 	"time"
 )
 
+
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8") 
+
+	w.WriteHeader(http.StatusOK)
+	
+	w.Write([]byte(http.StatusText(http.StatusOK)))
+}
 func main() {
+
 	const filepathRoot = "."
 	const port = "8080"
 
 	mux := http.NewServeMux()
 
-	server := http.Server{Addr: ":" + port, Handler: mux}
-	fmt.Println("Server Starting...")
-	fmt.Println("Time:", time.Now().Format("2006-01-02 15:04:05"))
-	fmt.Println("Tip: Press Ctrl+C to stop")
+	fmt.Println("🚀  Server Starting...")
+	fmt.Println("🕒  Time:", time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Println("💡  Tip: Press Ctrl+C to stop")
 	
-	mux.Handle("/", http.FileServer(http.Dir(filepathRoot)))
+	mux.Handle("/app/", http.StripPrefix("/app/", http.FileServer(http.Dir(filepathRoot))))
+	mux.HandleFunc("/healthz", healthHandler)
 
-	log.Printf("Serving files from %s on port: %s...\n", filepathRoot, port)
-	err := server.ListenAndServe()
-	if err != nil {
-		log.Fatalf("❌ Server failed to start: %v", err)
-	}
+	server := &http.Server{Addr: ":" + port, Handler: mux}
 
+	fmt.Printf("⚡  Serving files from %s on port: %s...\n", filepathRoot, port)
 
-
+	log.Fatal(server.ListenAndServe()) 
 }
