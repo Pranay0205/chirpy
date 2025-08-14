@@ -21,13 +21,19 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 }
 
 func (cfg *apiConfig) handleMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	w.WriteHeader(http.StatusOK)
 
 	count := cfg.fileserverHits.Load()
 
-	message := fmt.Sprintf("Hits: %d", count)
+	message := fmt.Sprintf(`
+	<html>
+		<body>
+			<h1>Welcome, Chirpy Admin</h1>
+			<p>Chirpy has been visited %d times!</p>
+		</body>
+	</html>`, count)
 
 	w.Write([]byte(message))
 }
@@ -59,8 +65,8 @@ func main() {
 	
 	mux.HandleFunc("GET /api/healthz", healthHandler)
 
-	mux.HandleFunc("GET /api/metrics", apiConfig.handleMetrics)
-	mux.HandleFunc("POST /api/reset", apiConfig.handleResetMetrics)
+	mux.HandleFunc("GET /admin/metrics", apiConfig.handleMetrics)
+	mux.HandleFunc("POST /admin/reset", apiConfig.handleResetMetrics)
 
 	server := &http.Server{Addr: ":" + port, Handler: mux}
 
