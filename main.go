@@ -13,8 +13,8 @@ type apiConfig struct {
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request){
-		log.Printf("📃	%s %s - User-Agent: %s", r.Method, r.URL.String(),	r.UserAgent())
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("📃	%s %s - User-Agent: %s", r.Method, r.URL.String(), r.UserAgent())
 		cfg.fileserverHits.Add(1)
 		next.ServeHTTP(w, r)
 	})
@@ -23,7 +23,7 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 func (cfg *apiConfig) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 
 	count := cfg.fileserverHits.Load()
 
@@ -38,16 +38,14 @@ func (cfg *apiConfig) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(message))
 }
 
-
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8") 
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
-	w.WriteHeader(http.StatusOK)
-	
-	w.Write([]byte(http.StatusText(http.StatusOK)))
+	w.WriteHeader(200)
+
+	w.Write([]byte(http.StatusText(200)))
 }
-
 
 func main() {
 
@@ -55,22 +53,24 @@ func main() {
 	const port = "8080"
 
 	mux := http.NewServeMux()
-	apiConfig := apiConfig{fileserverHits: atomic.Int32{},}
+	apiConfig := apiConfig{fileserverHits: atomic.Int32{}}
 
 	fmt.Println("🚀  Server Starting...")
 	fmt.Println("🕒  Time:", time.Now().Format("2006-01-02 15:04:05"))
 	fmt.Println("💡  Tip: Press Ctrl+C to stop")
-	
+
 	mux.Handle("/app/", http.StripPrefix("/app/", apiConfig.middlewareMetricsInc(http.FileServer(http.Dir(filepathRoot)))))
-	
+
 	mux.HandleFunc("GET /api/healthz", healthHandler)
 
 	mux.HandleFunc("GET /admin/metrics", apiConfig.handleMetrics)
 	mux.HandleFunc("POST /admin/reset", apiConfig.handleResetMetrics)
 
+	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp)
+
 	server := &http.Server{Addr: ":" + port, Handler: mux}
 
 	fmt.Printf("⚡  Serving files from %s on port: %s...\n", filepathRoot, port)
 
-	log.Fatal(server.ListenAndServe()) 
+	log.Fatal(server.ListenAndServe())
 }
