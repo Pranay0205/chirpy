@@ -1,15 +1,22 @@
 package main
 
 import (
+	"chirpy/internal/database"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	dbQueries      *database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -52,8 +59,16 @@ func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Printf("❌	failed to establish connection with db")
+	}
+	fmt.Println("💾  Database connection established")
+
 	mux := http.NewServeMux()
-	apiConfig := apiConfig{fileserverHits: atomic.Int32{}}
+	apiConfig := apiConfig{fileserverHits: atomic.Int32{}, dbQueries: database.New(db)}
 
 	fmt.Println("🚀  Server Starting...")
 	fmt.Println("🕒  Time:", time.Now().Format("2006-01-02 15:04:05"))
