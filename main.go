@@ -10,13 +10,22 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
+type User struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+}
+
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	dbQueries      *database.Queries
+	platform       string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -68,7 +77,7 @@ func main() {
 	fmt.Println("💾  Database connection established")
 
 	mux := http.NewServeMux()
-	apiConfig := apiConfig{fileserverHits: atomic.Int32{}, dbQueries: database.New(db)}
+	apiConfig := apiConfig{fileserverHits: atomic.Int32{}, dbQueries: database.New(db), platform: os.Getenv("PLATFORM")}
 
 	fmt.Println("🚀  Server Starting...")
 	fmt.Println("🕒  Time:", time.Now().Format("2006-01-02 15:04:05"))
@@ -82,6 +91,8 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", apiConfig.handleResetMetrics)
 
 	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp)
+
+	mux.HandleFunc("POST /api/users", apiConfig.handleUsers)
 
 	server := &http.Server{Addr: ":" + port, Handler: mux}
 
