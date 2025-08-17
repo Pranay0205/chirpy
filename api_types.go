@@ -29,5 +29,6 @@ type ChirpRequest struct {
 }
 
 type UserRequest struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }

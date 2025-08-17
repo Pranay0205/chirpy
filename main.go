@@ -88,6 +88,8 @@ func main() {
 
 	mux.HandleFunc("POST /api/users", apiConfig.handleUsers)
 
+	mux.HandleFunc("POST /api/login", apiConfig.handleLogin)
+
 	server := &http.Server{Addr: ":" + port, Handler: mux}
 
 	fmt.Printf("⚡  Serving files from %s on port: %s...\n", filepathRoot, port)
