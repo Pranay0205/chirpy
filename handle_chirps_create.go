@@ -6,37 +6,23 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 )
 
-type Chirp struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Body      string    `json:"body"`
-	UserId    uuid.UUID `json:"user_id"`
-}
-
 func (cfg *apiConfig) handleChirp(w http.ResponseWriter, r *http.Request) {
 
-	type parameters struct {
-		Body   string `json:"body"`
-		UserId string `json:"user_id"`
-	}
-
 	decoder := json.NewDecoder(r.Body)
-	requestVal := parameters{}
+	requestVal := ChirpRequest{}
 	err := decoder.Decode(&requestVal)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Coudn't decode parameters", err)
+		respondWithError(w, http.StatusBadRequest, "failed to parse request: invalid JSON", err)
 		return
 	}
 
 	const maxChirpLength = 140
 	if len(requestVal.Body) > maxChirpLength {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
+		respondWithError(w, http.StatusBadRequest, "failed to create chirp: body exceeds 140 characters", nil)
 		return
 	}
 
@@ -44,7 +30,7 @@ func (cfg *apiConfig) handleChirp(w http.ResponseWriter, r *http.Request) {
 	parsedUUID, err := uuid.Parse(requestVal.UserId)
 	if err != nil {
 		log.Printf("Error parsing UUID string: %v\n", err)
-		respondWithError(w, http.StatusBadRequest, "Error parsing UUID string", err)
+		respondWithError(w, http.StatusBadRequest, "failed to parse user ID: invalid UUID format", err)
 		return
 	}
 
@@ -54,7 +40,7 @@ func (cfg *apiConfig) handleChirp(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		log.Printf("Error while creating the chirp: %v\n", err)
-		respondWithError(w, http.StatusBadRequest, "Error while creating the chirp", err)
+		respondWithError(w, http.StatusInternalServerError, "failed to create chirp: database error", err)
 		return
 	}
 

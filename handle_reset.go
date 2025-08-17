@@ -10,7 +10,7 @@ func (cfg *apiConfig) handleResetMetrics(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 	if cfg.platform != "dev" {
-		respondWithError(w, http.StatusForbidden, "cannot reset in production environment", errors.New("forbidden in production"))
+		respondWithError(w, http.StatusForbidden, "failed to reset metrics: not dev environment", errors.New("forbidden in production"))
 		return
 	}
 
