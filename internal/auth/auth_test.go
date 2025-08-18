@@ -2,6 +2,9 @@ package auth
 
 import (
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 func TestHashPassword_EmptyPassword(t *testing.T) {
@@ -116,5 +119,88 @@ func TestCheckPasswordHash_InvalidHash(t *testing.T) {
 	err := CheckPasswordHash(password, invalidHash)
 	if err == nil {
 		t.Error("CheckPasswordHash() should return error for invalid hash")
+	}
+}
+
+// Test cases for MakeJWT function
+func TestMakeJWT_ValidInput(t *testing.T) {
+	userID := uuid.New()
+	secret := "test-secret-key"
+	expiration := time.Hour
+
+	token, err := MakeJWT(userID, secret, expiration)
+
+	if err != nil {
+		t.Errorf("MakeJWT() error = %v, want nil", err)
+	}
+
+	if token == "" {
+		t.Error("MakeJWT() returned empty token")
+	}
+
+	// Verify we can validate the token we just created
+	parsedUserID, err := ValidateJWT(token, secret)
+	if err != nil {
+		t.Errorf("Failed to validate generated token: %v", err)
+	}
+
+	if parsedUserID != userID {
+		t.Errorf("ValidateJWT() userID = %v, want %v", parsedUserID, userID)
+	}
+}
+
+func TestMakeJWT_EmptySecret(t *testing.T) {
+	userID := uuid.New()
+	secret := ""
+	expiration := time.Hour
+
+	token, err := MakeJWT(userID, secret, expiration)
+
+	// Token should still be created even with empty secret
+	if err != nil {
+		t.Errorf("MakeJWT() error = %v, want nil", err)
+	}
+
+	if token == "" {
+		t.Error("MakeJWT() returned empty token")
+	}
+}
+
+// Test cases for ValidateJWT function
+func TestValidateJWT_ValidToken(t *testing.T) {
+	userID := uuid.New()
+	secret := "test-secret-key"
+	expiration := time.Hour
+
+	// First create a valid token
+	token, err := MakeJWT(userID, secret, expiration)
+	if err != nil {
+		t.Fatalf("Failed to create test token: %v", err)
+	}
+
+	// Now validate it
+	parsedUserID, err := ValidateJWT(token, secret)
+
+	if err != nil {
+		t.Errorf("ValidateJWT() error = %v, want nil", err)
+	}
+
+	if parsedUserID != userID {
+		t.Errorf("ValidateJWT() userID = %v, want %v", parsedUserID, userID)
+	}
+}
+
+func TestValidateJWT_InvalidToken(t *testing.T) {
+	secret := "test-secret-key"
+	invalidToken := "invalid.jwt.token"
+
+	userID, err := ValidateJWT(invalidToken, secret)
+
+	if err == nil {
+		t.Error("ValidateJWT() should return error for invalid token")
+	}
+
+	if userID != uuid.Nil {
+		t.Errorf("ValidateJWT() should return uuid.Nil for invalid token, got %v", userID)
 	}
 }
