@@ -1,20 +1,31 @@
 package main
 
 import (
+	"chirpy/internal/auth"
 	"chirpy/internal/database"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
-
-	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handleChirp(w http.ResponseWriter, r *http.Request) {
 
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "failed to create chirp: unauthorized user", err)
+		return
+	}
+
+	tokenUserId, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "failed to create chirp: unauthorized user", err)
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	requestVal := ChirpRequest{}
-	err := decoder.Decode(&requestVal)
+	err = decoder.Decode(&requestVal)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "failed to parse request: invalid JSON", err)
 		return
@@ -27,16 +38,10 @@ func (cfg *apiConfig) handleChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	censoredChirp := censorProfaneWords(requestVal.Body)
-	parsedUUID, err := uuid.Parse(requestVal.UserId)
-	if err != nil {
-		log.Printf("Error parsing UUID string: %v\n", err)
-		respondWithError(w, http.StatusBadRequest, "failed to parse user ID: invalid UUID format", err)
-		return
-	}
 
 	dbChirp, err := cfg.dbQueries.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body:   censoredChirp,
-		UserID: parsedUUID,
+		UserID: tokenUserId,
 	})
 	if err != nil {
 		log.Printf("Error while creating the chirp: %v\n", err)
@@ -44,7 +49,7 @@ func (cfg *apiConfig) handleChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chirp := Chirp{ID: dbChirp.ID, CreatedAt: dbChirp.CreatedAt, UpdatedAt: dbChirp.UpdatedAt, Body: dbChirp.Body, UserId: dbChirp.UserID}
+	chirp := Chirp{ID: dbChirp.ID, CreatedAt: dbChirp.CreatedAt, UpdatedAt: dbChirp.UpdatedAt, Body: dbChirp.Body, UserId: tokenUserId}
 
 	respondWithJSON(w, 201, chirp)
 

@@ -18,6 +18,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	dbQueries      *database.Queries
 	platform       string
+	secret         string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -62,6 +63,7 @@ func main() {
 
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Printf("❌	failed to establish connection with db")
@@ -69,7 +71,7 @@ func main() {
 	fmt.Println("💾  Database connection established")
 
 	mux := http.NewServeMux()
-	apiConfig := apiConfig{fileserverHits: atomic.Int32{}, dbQueries: database.New(db), platform: os.Getenv("PLATFORM")}
+	apiConfig := apiConfig{fileserverHits: atomic.Int32{}, dbQueries: database.New(db), platform: os.Getenv("PLATFORM"), secret: os.Getenv("SECRET")}
 
 	fmt.Println("🚀  Server Starting...")
 	fmt.Println("🕒  Time:", time.Now().Format("2006-01-02 15:04:05"))

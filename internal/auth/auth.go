@@ -3,6 +3,8 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -86,4 +88,20 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	}
 
 	return userId, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	authTokenString := headers.Get("Authorization")
+
+	if !strings.HasPrefix(authTokenString, "Bearer ") {
+		return "", errors.New("failed to retrieve token: no token found")
+	}
+
+	authToken := strings.TrimSpace(strings.TrimPrefix(authTokenString, "Bearer "))
+
+	if authToken == "" {
+		return "", errors.New("failed to retrieve token: no token found")
+	}
+	return authToken, nil
+
 }

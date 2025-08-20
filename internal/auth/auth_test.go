@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
@@ -202,5 +203,101 @@ func TestValidateJWT_InvalidToken(t *testing.T) {
 
 	if userID != uuid.Nil {
 		t.Errorf("ValidateJWT() should return uuid.Nil for invalid token, got %v", userID)
+	}
+}
+
+func TestGetBearerToken(t *testing.T) {
+	tests := []struct {
+		name          string
+		authHeader    string
+		expectedToken string
+		expectError   bool
+	}{
+		{
+			name:          "Valid Bearer token",
+			authHeader:    "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+			expectedToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+			expectError:   false,
+		},
+		{
+			name:          "Valid Bearer token with extra spaces",
+			authHeader:    "Bearer   token123   ",
+			expectedToken: "token123",
+			expectError:   false,
+		},
+		{
+			name:          "Missing Authorization header",
+			authHeader:    "",
+			expectedToken: "",
+			expectError:   true,
+		},
+		{
+			name:          "No Bearer prefix",
+			authHeader:    "Basic dXNlcjpwYXNz",
+			expectedToken: "",
+			expectError:   true,
+		},
+		{
+			name:          "Bearer without space",
+			authHeader:    "Bearertoken123",
+			expectedToken: "",
+			expectError:   true,
+		},
+		{
+			name:          "Bearer with no token",
+			authHeader:    "Bearer",
+			expectedToken: "",
+			expectError:   true,
+		},
+		{
+			name:          "Bearer with only spaces",
+			authHeader:    "Bearer   ",
+			expectedToken: "",
+			expectError:   true,
+		},
+		{
+			name:          "Wrong prefix entirely",
+			authHeader:    "NotBearer token123",
+			expectedToken: "",
+			expectError:   true,
+		},
+		{
+			name:          "Case sensitive Bearer",
+			authHeader:    "bearer token123",
+			expectedToken: "",
+			expectError:   true,
+		},
+		{
+			name:          "Multiple spaces between Bearer and token",
+			authHeader:    "Bearer     mytoken",
+			expectedToken: "mytoken",
+			expectError:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create headers
+			headers := http.Header{}
+			if tt.authHeader != "" {
+				headers.Set("Authorization", tt.authHeader)
+			}
+
+			// Call the function
+			token, err := GetBearerToken(headers)
+
+			// Check error expectation
+			if tt.expectError && err == nil {
+				t.Errorf("Expected error but got none")
+			}
+			if !tt.expectError && err != nil {
+				t.Errorf("Expected no error but got: %v", err)
+			}
+
+			// Check token value
+			if token != tt.expectedToken {
+				t.Errorf("Expected token %q but got %q", tt.expectedToken, token)
+			}
+		})
 	}
 }
