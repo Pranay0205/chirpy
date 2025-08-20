@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -104,4 +106,18 @@ func GetBearerToken(headers http.Header) (string, error) {
 	}
 	return authToken, nil
 
+}
+
+func MakeRefreshToken() (string, error) {
+	key := make([]byte, 32)
+
+	rand.Read(key)
+
+	encodedString := hex.EncodeToString(key)
+
+	if hex.EncodedLen(len(key)) != len(encodedString) {
+		return "", errors.New("failed to generate refresh token: encoded string did not match")
+	}
+
+	return encodedString, nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"chirpy/internal/auth"
+	"chirpy/internal/database"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -11,15 +12,11 @@ import (
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
-	userCredentials := UserRequest{ExpiresInSec: 3600}
+	userCredentials := UserRequest{}
 	err := decoder.Decode(&userCredentials)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "failed to parse login request: invalid JSON", err)
 		return
-	}
-
-	if userCredentials.ExpiresInSec > 3600 {
-		userCredentials.ExpiresInSec = 3600
 	}
 
 	dbUser, err := cfg.dbQueries.GetUserByEmail(r.Context(), userCredentials.Email)
@@ -29,7 +26,7 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		respondWithError(w, http.StatusInternalServerError, "failed to get user: database error", err)
+		respondWithError(w, http.StatusInternalServerError, "failed to login: database error", err)
 		return
 	}
 
@@ -39,18 +36,37 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.MakeJWT(dbUser.ID, cfg.secret, time.Duration((userCredentials.ExpiresInSec))*time.Second)
+	token, err := auth.MakeJWT(dbUser.ID, cfg.secret, time.Hour)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "failed to generate token: token creationg failed", err)
+		respondWithError(w, http.StatusInternalServerError, "failed to login: token creationg failed", err)
+		return
+	}
+
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "failed to login: unable to generate refresh token", err)
+		return
+	}
+
+	dbRefreshToken, err := cfg.dbQueries.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:     refreshToken,
+		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().Add(60 * 24 * time.Hour), // 60 days
+		UpdatedAt: time.Now().UTC(),
+		UserID:    dbUser.ID,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "failed to login: database error", err)
 		return
 	}
 
 	user := User{
-		ID:        dbUser.ID,
-		CreatedAt: dbUser.CreatedAt,
-		UpdatedAt: dbUser.UpdatedAt,
-		Email:     dbUser.Email,
-		Token:     token,
+		ID:            dbUser.ID,
+		CreatedAt:     dbUser.CreatedAt,
+		UpdatedAt:     dbUser.UpdatedAt,
+		Email:         dbUser.Email,
+		Token:         token,
+		Refresh_Token: dbRefreshToken.Token,
 	}
 
 	respondWithJSON(w, http.StatusOK, user)
