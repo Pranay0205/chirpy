@@ -121,3 +121,19 @@ func MakeRefreshToken() (string, error) {
 
 	return encodedString, nil
 }
+
+func GetAPIKey(headers http.Header) (string, error) {
+	apiKeyString := headers.Get("Authorization")
+
+	if !strings.HasPrefix(apiKeyString, "ApiKey ") {
+		return "", errors.New("failed to retreive api key: no api key found")
+	}
+
+	apiKey := strings.TrimSpace(strings.TrimPrefix(apiKeyString, "ApiKey"))
+
+	if apiKey == "" {
+		return "", errors.New("failed to retreive api key: no api key found")
+	}
+
+	return apiKey, nil
+}

@@ -19,6 +19,7 @@ type apiConfig struct {
 	dbQueries      *database.Queries
 	platform       string
 	secret         string
+	polkaKey       string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -71,7 +72,7 @@ func main() {
 	fmt.Println("💾  Database connection established")
 
 	mux := http.NewServeMux()
-	apiConfig := apiConfig{fileserverHits: atomic.Int32{}, dbQueries: database.New(db), platform: os.Getenv("PLATFORM"), secret: os.Getenv("SECRET")}
+	apiConfig := apiConfig{fileserverHits: atomic.Int32{}, dbQueries: database.New(db), platform: os.Getenv("PLATFORM"), secret: os.Getenv("SECRET"), polkaKey: os.Getenv("POLKA_KEY")}
 
 	fmt.Println("🚀  Server Starting...")
 	fmt.Println("🕒  Time:", time.Now().Format("2006-01-02 15:04:05"))
@@ -95,6 +96,8 @@ func main() {
 	mux.HandleFunc("POST /api/login", apiConfig.handleLogin)
 	mux.HandleFunc("POST /api/refresh", apiConfig.handleRefreshToken)
 	mux.HandleFunc("POST /api/revoke", apiConfig.handleRevokeToken)
+
+	mux.HandleFunc("POST /api/polka/webhooks", apiConfig.handlePolkaWebhooks)
 
 	server := &http.Server{Addr: ":" + port, Handler: mux}
 

@@ -22,6 +22,7 @@ type User struct {
 	Email         string    `json:"email"`
 	Token         string    `json:"token"`
 	Refresh_Token string    `json:"refresh_token"`
+	IsChirpRed    bool      `json:"is_chirpy_red"`
 }
 
 // Request Models
@@ -41,4 +42,11 @@ type TokenResponse struct {
 
 type MessageResponse struct {
 	Message string `json:"message"`
+}
+
+type WebHooksRequest struct {
+	Event string `json:"event"`
+	Data  struct {
+		UserID string `json:"user_id"`
+	} `json:"data"`
 }

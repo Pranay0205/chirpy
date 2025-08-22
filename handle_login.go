@@ -67,6 +67,7 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Email:         dbUser.Email,
 		Token:         token,
 		Refresh_Token: dbRefreshToken.Token,
+		IsChirpRed:    dbUser.IsChirpRed.Bool,
 	}
 
 	respondWithJSON(w, http.StatusOK, user)
